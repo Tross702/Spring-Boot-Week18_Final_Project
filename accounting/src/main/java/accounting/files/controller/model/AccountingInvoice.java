@@ -60,4 +60,9 @@ public class AccountingInvoice {
 	public void setClosed(boolean closed) {
 		this.closed = closed;
 	}
+
+	public boolean isPaid() {
+		return totalAmount > 0.0;
+
+	}
 }

@@ -11,7 +11,7 @@ public class InvoiceItem {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long itemId;
-	private String productId;
+	private long productId;
 	private int quantity;
 
 	@ManyToOne
@@ -25,11 +25,11 @@ public class InvoiceItem {
 		this.itemId = itemId;
 	}
 
-	public String getProductId() {
+	public long getProductId() {
 		return productId;
 	}
 
-	public void setProductId(String productId) {
+	public void setProductId(long productId) {
 		this.productId = productId;
 	}
 

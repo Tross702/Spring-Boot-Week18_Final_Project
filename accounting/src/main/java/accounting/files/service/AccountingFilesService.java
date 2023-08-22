@@ -1,5 +1,6 @@
 package accounting.files.service;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -10,26 +11,27 @@ import org.springframework.stereotype.Service;
 import accounting.files.controller.model.AccountingCustomer;
 import accounting.files.controller.model.AccountingInvoice;
 import accounting.files.controller.model.AccountingInvoiceItem;
+import accounting.files.controller.model.AccountingProduct;
 import accounting.files.dao.CustomerDao;
 import accounting.files.dao.InvoiceDao;
-import accounting.files.dao.InvoiceItemDao;
+import accounting.files.dao.ProductDao;
 import accounting.files.entity.Customer;
 import accounting.files.entity.Invoice;
 import accounting.files.entity.InvoiceItem;
+import accounting.files.entity.Product;
 
 @Service
 public class AccountingFilesService {
 
 	private final InvoiceDao invoiceDao;
 	private final CustomerDao customerDao;
-	@SuppressWarnings("unused")
-	private final InvoiceItemDao invoiceItemDao;
+	private final ProductDao productDao;
 
 	@Autowired
-	public AccountingFilesService(InvoiceDao invoiceDao, CustomerDao customerDao, InvoiceItemDao invoiceItemDao) {
+	public AccountingFilesService(InvoiceDao invoiceDao, CustomerDao customerDao, ProductDao productDao) {
 		this.invoiceDao = invoiceDao;
 		this.customerDao = customerDao;
-		this.invoiceItemDao = invoiceItemDao;
+		this.productDao = productDao;
 	}
 
 	// Customer methods
@@ -45,17 +47,22 @@ public class AccountingFilesService {
 
 	public AccountingCustomer getCustomerById(Long customerId) {
 		Optional<Customer> customerOptional = customerDao.findById(customerId);
-		if (customerOptional.isPresent()) {
-			Customer customer = customerOptional.get();
-			return convertToAccountingCustomer(customer);
-		}
-		return null;
+		return customerOptional.map(this::convertToAccountingCustomer).orElse(null);
 	}
 
 	public AccountingCustomer createCustomer(AccountingCustomer accountingCustomer) {
 		Customer customer = convertToEntity(accountingCustomer);
 		customer = customerDao.save(customer);
 		return convertToAccountingCustomer(customer);
+	}
+
+	private Customer convertToEntity(AccountingCustomer accountingCustomer) {
+		Customer customer = new Customer();
+		customer.setCustomerId(accountingCustomer.getCustomerId());
+		customer.setFirstName(accountingCustomer.getFirstName());
+		customer.setLastName(accountingCustomer.getLastName());
+		customer.setEmail(accountingCustomer.getEmail());
+		return customer;
 	}
 
 	public AccountingCustomer updateCustomer(Long customerId, AccountingCustomer accountingCustomer) {
@@ -92,11 +99,7 @@ public class AccountingFilesService {
 
 	public AccountingInvoice getInvoiceById(String invoiceId) {
 		Optional<Invoice> invoiceOptional = invoiceDao.findById(Long.parseLong(invoiceId));
-		if (invoiceOptional.isPresent()) {
-			Invoice invoice = invoiceOptional.get();
-			return convertToAccountingInvoice(invoice);
-		}
-		return null;
+		return invoiceOptional.map(this::convertToAccountingInvoice).orElse(null);
 	}
 
 	public AccountingInvoice createInvoice(AccountingInvoice accountingInvoice) {
@@ -125,8 +128,6 @@ public class AccountingFilesService {
 		}
 		return false;
 	}
-
-	// Invoice Item methods
 
 	public List<AccountingInvoiceItem> getInvoiceItems(String invoiceId) {
 		Optional<Invoice> invoiceOptional = invoiceDao.findById(Long.parseLong(invoiceId));
@@ -195,87 +196,348 @@ public class AccountingFilesService {
 		return false;
 	}
 
-	// Conversion methods
-
-	private AccountingInvoice convertToAccountingInvoice(Invoice invoice) {
-		AccountingInvoice accountingInvoice = new AccountingInvoice();
-		accountingInvoice.setInvoiceId(invoice.getInvoiceId().toString());
-		accountingInvoice.setCustomer(invoice.getCustomer());
-		accountingInvoice.setInvoiceDate(invoice.getInvoiceDate());
-		accountingInvoice.setTotalAmount(invoice.getTotalAmount());
-		accountingInvoice.setItems(getInvoiceItems(invoice.getInvoiceId().toString()));
-		return accountingInvoice;
-	}
-
-	private AccountingInvoiceItem convertToAccountingInvoiceItem(InvoiceItem item) {
-		AccountingInvoiceItem accountingItem = new AccountingInvoiceItem();
-		accountingItem.setItemId(item.getItemId().toString());
-		accountingItem.setProductId(item.getProductId());
-		accountingItem.setQuantity(item.getQuantity());
-		return accountingItem;
-	}
-
-	private Invoice convertToEntity(AccountingInvoice accountingInvoice) {
-		Invoice invoice = new Invoice();
-		String invoiceId = accountingInvoice.getInvoiceId();
-		if (invoiceId != null && invoiceId.matches("\\d+")) {
-			invoice.setInvoiceId(Long.parseLong(invoiceId));
-		} else {
-			// Handle the case when the invoiceId is not valid
-		}
-		invoice.setCustomer(accountingInvoice.getCustomer());
-		invoice.setInvoiceDate(accountingInvoice.getInvoiceDate());
-		invoice.setTotalAmount(accountingInvoice.getTotalAmount());
-		return invoice;
-	}
-
-	private InvoiceItem convertToEntity(AccountingInvoiceItem accountingItem) {
-		InvoiceItem item = new InvoiceItem();
-		item.setItemId(Long.parseLong(accountingItem.getItemId()));
-		item.setProductId(accountingItem.getProductId());
-		item.setQuantity(accountingItem.getQuantity());
-		return item;
-	}
-
-	private AccountingCustomer convertToAccountingCustomer(Customer customer) {
-		AccountingCustomer accountingCustomer = new AccountingCustomer();
-		accountingCustomer.setCustomerId(customer.getCustomerId());
-		accountingCustomer.setFirstName(customer.getFirstName());
-		accountingCustomer.setLastName(customer.getLastName());
-		accountingCustomer.setEmail(customer.getEmail());
-		return accountingCustomer;
-	}
-
-	private Customer convertToEntity(AccountingCustomer accountingCustomer) {
-		Customer customer = new Customer();
-		customer.setCustomerId(accountingCustomer.getCustomerId());
-		customer.setFirstName(accountingCustomer.getFirstName());
-		customer.setLastName(accountingCustomer.getLastName());
-		customer.setEmail(accountingCustomer.getEmail());
-		return customer;
-	}
-
-	public AccountingInvoice updateInvoice(AccountingInvoice invoice) {
-		Optional<Invoice> existingInvoiceOptional = invoiceDao.findById(Long.parseLong(invoice.getInvoiceId()));
-		if (existingInvoiceOptional.isPresent()) {
-			Invoice existingInvoice = existingInvoiceOptional.get();
-			existingInvoice.setCustomer(invoice.getCustomer());
-			existingInvoice.setInvoiceDate(invoice.getInvoiceDate());
-			existingInvoice.setTotalAmount(invoice.getTotalAmount());
-			existingInvoice.setItems(convertToEntityItemList(invoice.getItems()));
-			existingInvoice.setClosed(invoice.isClosed());
-			existingInvoice = invoiceDao.save(existingInvoice);
-			return convertToAccountingInvoice(existingInvoice);
+	public AccountingInvoiceItem getInvoiceItem(String invoiceId, String itemId) {
+		Optional<Invoice> invoiceOptional = invoiceDao.findById(Long.parseLong(invoiceId));
+		if (invoiceOptional.isPresent()) {
+			Invoice invoice = invoiceOptional.get();
+			for (InvoiceItem item : invoice.getItems()) {
+				if (item.getItemId().equals(Long.parseLong(itemId))) {
+					return convertToAccountingInvoiceItem(item);
+				}
+			}
 		}
 		return null;
 	}
 
-	private List<InvoiceItem> convertToEntityItemList(List<AccountingInvoiceItem> accountingItems) {
-		List<InvoiceItem> items = new ArrayList<>();
-		for (AccountingInvoiceItem accountingItem : accountingItems) {
-			InvoiceItem item = convertToEntity(accountingItem);
-			items.add(item);
+	public boolean updateInvoiceItemQuantity(String invoiceId, String itemId, int quantity) {
+		Optional<Invoice> invoiceOptional = invoiceDao.findById(Long.parseLong(invoiceId));
+		if (invoiceOptional.isPresent()) {
+			Invoice invoice = invoiceOptional.get();
+			for (InvoiceItem item : invoice.getItems()) {
+				if (item.getItemId().equals(Long.parseLong(itemId))) {
+					item.setQuantity(quantity);
+					invoiceDao.save(invoice);
+					return true;
+				}
+			}
 		}
-		return items;
+		return false;
 	}
+
+	// Product methods
+
+	public List<AccountingProduct> getAllProducts() {
+		List<Product> products = productDao.findAll();
+		List<AccountingProduct> accountingProducts = new ArrayList<>();
+		for (Product product : products) {
+			accountingProducts.add(convertToAccountingProduct(product));
+		}
+		return accountingProducts;
+	}
+
+	public AccountingProduct getProductById(Long productId) {
+		Optional<Product> productOptional = productDao.findById(productId);
+		return productOptional.map(this::convertToAccountingProduct).orElse(null);
+	}
+
+	public AccountingProduct createProduct(AccountingProduct accountingProduct) {
+		Product product = convertToEntity(accountingProduct);
+		product = productDao.save(product);
+		return convertToAccountingProduct(product);
+	}
+
+	public AccountingProduct updateProduct(Long productId, AccountingProduct accountingProduct) {
+		Optional<Product> existingProductOptional = productDao.findById(productId);
+		if (existingProductOptional.isPresent()) {
+			Product existingProduct = existingProductOptional.get();
+			Product updatedProduct = convertToEntity(accountingProduct);
+			updatedProduct.setProductId(existingProduct.getProductId());
+			updatedProduct = productDao.save(updatedProduct);
+			return convertToAccountingProduct(updatedProduct);
+		}
+		return null;
+	}
+
+	public boolean deleteProduct(Long productId) {
+		Optional<Product> productOptional = productDao.findById(productId);
+		if (productOptional.isPresent()) {
+			productDao.deleteById(productId);
+			return true;
+		}
+		return false;
+	}
+
+	// Financial Reports
+
+	public double calculateTotalRevenue() {
+		double totalRevenue = 0.0;
+		List<AccountingInvoice> allInvoices = getAllInvoices();
+		for (AccountingInvoice invoice : allInvoices) {
+			totalRevenue += invoice.getTotalAmount();
+		}
+		return totalRevenue;
+	}
+
+	public BigDecimal calculateTotalExpenses() {
+		BigDecimal totalExpenses = BigDecimal.ZERO;
+		List<AccountingInvoice> allInvoices = getAllInvoices();
+		for (AccountingInvoice invoice : allInvoices) {
+			totalExpenses = totalExpenses.add(calculateInvoiceExpenses(invoice));
+		}
+		return totalExpenses;
+	}
+
+	private BigDecimal calculateInvoiceExpenses(AccountingInvoice invoice) {
+		BigDecimal totalExpenses = BigDecimal.ZERO;
+		for (AccountingInvoiceItem item : invoice.getItems()) {
+			AccountingProduct product = getProductById(item.getProductId());
+			if (product != null) {
+				BigDecimal price = product.getPrice();
+				BigDecimal quantity = BigDecimal.valueOf(item.getQuantity());
+				totalExpenses = totalExpenses.add(price.multiply(quantity));
+			}
+		}
+		return totalExpenses;
+	}
+
+	public BigDecimal calculateTotalAssets() {
+		BigDecimal totalAssets = BigDecimal.ZERO;
+		List<AccountingCustomer> allCustomers = getAllCustomers();
+		for (AccountingCustomer customer : allCustomers) {
+			totalAssets = totalAssets.add(calculateCustomerTotalAssets(customer));
+		}
+		return totalAssets;
+	}
+
+	public BigDecimal calculateNetIncome() {
+		BigDecimal totalRevenue = BigDecimal.valueOf(calculateTotalRevenue());
+		BigDecimal totalExpenses = calculateTotalExpenses();
+		return totalRevenue.subtract(totalExpenses);
+	}
+
+	private BigDecimal calculateCustomerTotalAssets(AccountingCustomer customer) {
+		BigDecimal totalAssets = BigDecimal.ZERO;
+		List<AccountingInvoice> customerInvoices = getInvoicesForCustomer(customer.getCustomerId());
+		for (AccountingInvoice invoice : customerInvoices) {
+			totalAssets = totalAssets.add(calculateInvoiceAssets(invoice));
+		}
+		return totalAssets;
+	}
+
+	private BigDecimal calculateInvoiceAssets(AccountingInvoice invoice) {
+		BigDecimal invoiceAssets = BigDecimal.ZERO;
+		for (AccountingInvoiceItem item : invoice.getItems()) {
+			AccountingProduct product = getProductById(item.getProductId());
+			if (product != null) {
+				BigDecimal price = product.getPrice();
+				BigDecimal quantity = BigDecimal.valueOf(item.getQuantity());
+				invoiceAssets = invoiceAssets.add(price.multiply(quantity));
+			}
+		}
+		return invoiceAssets;
+	}
+
+	private AccountingProduct getProductById(String productId) {
+		Optional<AccountingProduct> productOptional = productDao.findById(productId);
+		return productOptional.orElse(null);
+	}
+
+	private BigDecimal calculateUnpaidInvoicesLiabilities() {
+		BigDecimal totalLiabilities = BigDecimal.ZERO;
+		List<AccountingInvoice> unpaidInvoices = getUnpaidInvoices();
+		for (AccountingInvoice invoice : unpaidInvoices) {
+			BigDecimal invoiceTotal = BigDecimal.valueOf(invoice.getTotalAmount());
+			totalLiabilities = totalLiabilities.add(invoiceTotal);
+		}
+		return totalLiabilities;
+	}
+
+	private List<AccountingInvoice> getUnpaidInvoices() {
+	    List<AccountingInvoice> unpaidInvoices = new ArrayList<>();
+	    List<AccountingInvoice> allInvoices = getAllInvoices();
+	    for (AccountingInvoice invoice : allInvoices) {
+	        if (!invoice.isPaid()) {
+	            unpaidInvoices.add(invoice);
+	        }
+	    }
+	    return unpaidInvoices;
+	}
+
+
+	public double calculateTotalLiabilities() {
+		BigDecimal totalLiabilities = calculateUnpaidInvoicesLiabilities();
+		return totalLiabilities.doubleValue();
+
+	}
+
+	public BigDecimal calculateTotalEquity() {
+		BigDecimal totalAssets = calculateTotalAssets();
+		BigDecimal totalLiabilities = BigDecimal.valueOf(calculateTotalLiabilities());
+
+		return totalAssets.subtract(totalLiabilities);
+	}
+
+	public String generateBalanceSheet() {
+		StringBuilder balanceSheet = new StringBuilder();
+		balanceSheet.append("Balance Sheet\n");
+		balanceSheet.append("---------------\n");
+		balanceSheet.append("Assets: ").append(calculateTotalAssets()).append("\n");
+		balanceSheet.append("Liabilities: ").append(calculateTotalLiabilities()).append("\n");
+		balanceSheet.append("Equity: ").append(calculateTotalEquity()).append("\n");
+		balanceSheet.append("---------------\n");
+		return balanceSheet.toString();
+	}
+
+	public String generateIncomeStatement() {
+		StringBuilder incomeStatement = new StringBuilder();
+		incomeStatement.append("Income Statement\n");
+		incomeStatement.append("---------------\n");
+		incomeStatement.append("Total Revenue: ").append(calculateTotalRevenue()).append("\n");
+		incomeStatement.append("Total Expenses: ").append(calculateTotalExpenses()).append("\n");
+		incomeStatement.append("Net Income: ").append(calculateNetIncome()).append("\n");
+		incomeStatement.append("---------------\n");
+		return incomeStatement.toString();
+	}
+
+	public String generateCashFlowStatement() {
+		// TODO:  
+		// Tracking cash flow from operations, investing, and
+		// financing activities
+		return "";
+	}
+
+	// Helper methods for conversion between Entity and Accounting models
+
+	private AccountingCustomer convertToAccountingCustomer(Customer customer) {
+		return new AccountingCustomer(customer.getCustomerId(), customer.getFirstName(), customer.getLastName(),
+				customer.getEmail());
+	}
+
+	private Customer convertToEntity(Customer customer) {
+		return new Customer(customer.getFirstName(), customer.getLastName(), customer.getEmail());
+	}
+
+	private AccountingInvoice convertToAccountingInvoice(Invoice invoice) {
+		List<AccountingInvoiceItem> accountingItems = new ArrayList<>();
+		for (InvoiceItem item : invoice.getItems()) {
+			accountingItems.add(convertToAccountingInvoiceItem(item));
+		}
+		return new AccountingInvoice();
+	}
+
+	private Invoice convertToEntity(AccountingInvoice accountingInvoice) {
+		Invoice invoice = new Invoice();
+		if (accountingInvoice.getInvoiceId() != null) {
+			invoice.setInvoiceId(Long.parseLong(accountingInvoice.getInvoiceId()));
+		}
+		invoice.setCustomer(convertToEntity(accountingInvoice.getCustomer()));
+		invoice.setInvoiceDate(accountingInvoice.getInvoiceDate());
+		invoice.setTotalAmount(accountingInvoice.getTotalAmount());
+		invoice.setClosed(accountingInvoice.isClosed());
+		return invoice;
+	}
+
+	private AccountingInvoiceItem convertToAccountingInvoiceItem(InvoiceItem item) {
+		return new AccountingInvoiceItem();
+	}
+
+	private InvoiceItem convertToEntity(AccountingInvoiceItem accountingItem) {
+		InvoiceItem item = new InvoiceItem();
+		if (accountingItem.getItemId() != null) {
+			item.setItemId(Long.parseLong(accountingItem.getItemId()));
+		}
+		item.setProductId(Long.parseLong(accountingItem.getProductId()));
+		item.setQuantity(accountingItem.getQuantity());
+		return item;
+	}
+
+	private AccountingProduct convertToAccountingProduct(Product product) {
+		return new AccountingProduct(product.getProductId(), product.getName(), product.getCategory(),
+				product.getPrice());
+	}
+
+	private Product convertToEntity(AccountingProduct accountingProduct) {
+		return new Product();
+	}
+
+	public boolean assignCustomerToInvoice(Long customerId, String invoiceId) {
+		Optional<Customer> customerOptional = customerDao.findById(customerId);
+		Optional<Invoice> invoiceOptional = invoiceDao.findById(Long.parseLong(invoiceId));
+
+		if (customerOptional.isPresent() && invoiceOptional.isPresent()) {
+			Customer customer = customerOptional.get();
+			Invoice invoice = invoiceOptional.get();
+
+			// Check if the customer is already assigned to the invoice
+			if (!invoice.getCustomer().contains(customer)) {
+				invoice.getCustomer().add(customer);
+				invoiceDao.save(invoice);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public List<AccountingInvoice> getInvoicesForCustomer(Long customerId) {
+		Optional<Customer> customerOptional = customerDao.findById(customerId);
+		if (customerOptional.isPresent()) {
+			Customer customer = customerOptional.get();
+			List<AccountingInvoice> accountingInvoices = new ArrayList<>();
+			for (Invoice invoice : customer.getInvoices()) {
+				accountingInvoices.add(convertToAccountingInvoice(invoice));
+			}
+			return accountingInvoices;
+		}
+		return null;
+	}
+
+	public boolean updateCustomerInvoiceRelationship(Long customerId, String invoiceId) {
+		Optional<Customer> customerOptional = customerDao.findById(customerId);
+		Optional<Invoice> invoiceOptional = invoiceDao.findById(Long.parseLong(invoiceId));
+
+		if (customerOptional.isPresent() && invoiceOptional.isPresent()) {
+			Customer customer = customerOptional.get();
+			Invoice invoice = invoiceOptional.get();
+
+			// Check if the customer is already assigned to the invoice
+			if (!invoice.getCustomer().contains(customer)) {
+				invoice.getCustomer().add(customer);
+				invoiceDao.save(invoice);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public List<AccountingCustomer> getCustomersForInvoice(String invoiceId) {
+		Optional<Invoice> invoiceOptional = invoiceDao.findById(Long.parseLong(invoiceId));
+		if (invoiceOptional.isPresent()) {
+			Invoice invoice = invoiceOptional.get();
+			List<AccountingCustomer> accountingCustomers = new ArrayList<>();
+			for (Customer customer : invoice.getCustomers()) {
+				accountingCustomers.add(convertToAccountingCustomer(customer));
+			}
+			return accountingCustomers;
+		}
+		return null;
+	}
+
+	public boolean removeCustomerInvoiceRelationship(Long customerId, String invoiceId) {
+		Optional<Customer> customerOptional = customerDao.findById(customerId);
+		Optional<Invoice> invoiceOptional = invoiceDao.findById(Long.parseLong(invoiceId));
+
+		if (customerOptional.isPresent() && invoiceOptional.isPresent()) {
+			Customer customer = customerOptional.get();
+			Invoice invoice = invoiceOptional.get();
+
+			// Check if the customer is assigned to the invoice
+			if (invoice.getCustomer().contains(customer)) {
+				invoice.getCustomer().remove(customer);
+				invoiceDao.save(invoice);
+				return true;
+			}
+		}
+		return false;
+	}
+
 }

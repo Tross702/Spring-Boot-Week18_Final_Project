@@ -85,4 +85,15 @@ public class Invoice {
 	public void setItems(List<InvoiceItem> items) {
 		this.items = items;
 	}
+
+	public List<Customer> getCustomers() {
+		List<Customer> customers = new ArrayList<>();
+		customers.add(customer);
+		return customers;
+	}
+
+	public Long getCustomerId() {
+		Long customerId = null;
+		return customerId;
+	}
 }

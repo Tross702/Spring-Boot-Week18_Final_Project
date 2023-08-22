@@ -4,7 +4,7 @@ public class AccountingInvoiceItem {
 	private String itemId;
 	private String productId;
 	private int quantity;
-	private String invoice_invoiceId;
+	private String invoiceId;
 
 	public String getItemId() {
 		return itemId;
@@ -31,10 +31,10 @@ public class AccountingInvoiceItem {
 	}
 
 	public String getInvoice_invoiceId() {
-		return invoice_invoiceId;
+		return invoiceId;
 	}
 
-	public void setInvoice_invoiceId(String invoice_invoiceId) {
-		this.invoice_invoiceId = invoice_invoiceId;
+	public void setInvoice_invoiceId(String invoiceId) {
+		this.invoiceId = invoiceId;
 	}
 }

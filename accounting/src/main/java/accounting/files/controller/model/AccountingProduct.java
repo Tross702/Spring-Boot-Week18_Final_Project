@@ -1,30 +1,24 @@
-package accounting.files.entity;
+package accounting.files.controller.model;
 
 import java.math.BigDecimal;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.Embeddable;
 
-@Entity
-@Table(name = "products")
-public class Product {
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
+@Embeddable
+public class AccountingProduct {
 	private Long productId;
-	@SuppressWarnings("unused")
-	private Long id;
 	private String name;
-
 	private String category;
-
 	private BigDecimal price;
 
-	// Constructors, getters, and setters
+	public AccountingProduct() {
+	}
 
-	public Product() {
+	public AccountingProduct(Long productId, String name, String category, BigDecimal price) {
+		this.productId = productId;
+		this.name = name;
+		this.category = category;
+		this.price = price;
 	}
 
 	public Long getProductId() {
